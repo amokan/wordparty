@@ -1,8 +1,9 @@
 -- Trigger on games table for template selection
 create or replace function public.check_template_selected()
 returns trigger
-security definer
 language plpgsql
+security definer
+set search_path = ''
 as $$
 declare
   total_participants integer;

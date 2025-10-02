@@ -17,11 +17,11 @@ create policy "Public profiles are viewable by everyone"
 
 create policy "Users can update own profile"
   on public.users for update
-  using (auth.uid() = id);
+  using ((select auth.uid()) = id);
 
 create policy "Users can insert own profile"
   on public.users for insert
-  with check (auth.uid() = id);
+  with check ((select auth.uid()) = id);
 
 -- Create index for performance
 create index idx_users_username on public.users(username);

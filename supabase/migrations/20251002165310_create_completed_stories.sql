@@ -18,7 +18,7 @@ create policy "Completed stories are viewable by game participants"
     exists (
       select 1 from public.game_participants
       where game_participants.game_id = completed_stories.game_id
-      and game_participants.user_id = auth.uid()
+      and game_participants.user_id = (select auth.uid())
     )
   );
 

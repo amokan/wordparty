@@ -23,7 +23,7 @@ create policy "Room hosts can create games"
     exists (
       select 1 from public.rooms
       where rooms.id = room_id
-      and rooms.host_id = auth.uid()
+      and rooms.host_id = (select auth.uid())
     )
   );
 
@@ -33,7 +33,7 @@ create policy "Room hosts can update their games"
     exists (
       select 1 from public.rooms
       where rooms.id = room_id
-      and rooms.host_id = auth.uid()
+      and rooms.host_id = (select auth.uid())
     )
   );
 

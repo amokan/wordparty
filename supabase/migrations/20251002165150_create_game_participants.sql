@@ -19,18 +19,18 @@ create policy "Game participants are viewable by everyone"
 create policy "Users can join games in their room"
   on public.game_participants for insert
   with check (
-    auth.uid() = user_id
+    (select auth.uid()) = user_id
     and exists (
       select 1 from public.games
       join public.room_participants on games.room_id = room_participants.room_id
       where games.id = game_id
-      and room_participants.user_id = auth.uid()
+      and room_participants.user_id = (select auth.uid())
     )
   );
 
 create policy "Users can update their own participant status"
   on public.game_participants for update
-  using (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id);
 
 -- Create indexes for performance
 create index idx_game_participants_game on public.game_participants(game_id);

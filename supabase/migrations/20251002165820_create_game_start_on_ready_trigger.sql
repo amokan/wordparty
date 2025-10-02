@@ -1,8 +1,9 @@
 -- Function to check if all participants are ready and template is selected
 create or replace function public.check_game_start_conditions()
 returns trigger
-security definer
 language plpgsql
+security definer
+set search_path = ''
 as $$
 declare
   total_participants integer;

@@ -1,6 +1,6 @@
 -- Ensure required extensions are in place
-create extension if not exists "uuid-ossp";
-create extension if not exists "citext";
+create extension if not exists "uuid-ossp" schema extensions;
+create extension if not exists "citext" schema extensions;
 
 -- Create custom types for game status
 create type game_status as enum ('waiting', 'playing', 'finished');

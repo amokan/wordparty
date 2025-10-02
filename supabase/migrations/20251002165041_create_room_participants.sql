@@ -16,11 +16,11 @@ create policy "Room participants are viewable by everyone"
 
 create policy "Users can join rooms"
   on public.room_participants for insert
-  with check (auth.uid() = user_id);
+  with check ((select auth.uid()) = user_id);
 
 create policy "Users can leave rooms"
   on public.room_participants for delete
-  using (auth.uid() = user_id);
+  using ((select auth.uid()) = user_id);
 
 -- Create indexes for performance
 create index idx_room_participants_room on public.room_participants(room_id);

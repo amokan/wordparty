@@ -16,11 +16,11 @@ create policy "Rooms are viewable by everyone"
 
 create policy "Authenticated users can create rooms"
   on public.rooms for insert
-  with check (auth.uid() = host_id);
+  with check ((select auth.uid()) = host_id);
 
 create policy "Host can update their room"
   on public.rooms for update
-  using (auth.uid() = host_id);
+  using ((select auth.uid()) = host_id);
 
 -- Create index for room code lookups
 create index idx_rooms_code on public.rooms(code);

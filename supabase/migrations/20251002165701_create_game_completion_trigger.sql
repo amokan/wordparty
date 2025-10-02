@@ -1,8 +1,9 @@
 -- Function to check if game is complete and generate story
 create or replace function public.check_game_completion()
 returns trigger
-security definer
 language plpgsql
+security definer
+set search_path = ''
 as $$
 declare
   template_data jsonb;

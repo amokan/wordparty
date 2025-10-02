@@ -21,18 +21,18 @@ create policy "Word submissions are viewable by game participants"
     exists (
       select 1 from public.game_participants
       where game_participants.game_id = word_submissions.game_id
-      and game_participants.user_id = auth.uid()
+      and game_participants.user_id = (select auth.uid())
     )
   );
 
 create policy "Game participants can submit words"
   on public.word_submissions for insert
   with check (
-    auth.uid() = user_id
+    (select auth.uid()) = user_id
     and exists (
       select 1 from public.game_participants
       where game_participants.game_id = word_submissions.game_id
-      and game_participants.user_id = auth.uid()
+      and game_participants.user_id = (select auth.uid())
     )
   );
 
