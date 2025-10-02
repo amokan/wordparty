@@ -25,7 +25,6 @@ export default async function RoomsPage() {
       host:users!rooms_host_id_fkey(username)
     `)
     .eq("room_participants.user_id", user.id)
-    .eq("is_active", true)
     .order("created_at", { ascending: false });
 
   return (

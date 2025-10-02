@@ -5,6 +5,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export default function Page() {
   return (
@@ -14,15 +16,24 @@ export default function Page() {
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl">
-                Thank you for signing up!
+                Welcome to Word Party! 🎉
               </CardTitle>
-              <CardDescription>Check your email to confirm</CardDescription>
+              <CardDescription>Your account has been created</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                You&apos;ve successfully signed up. Please check your email to
-                confirm your account before signing in.
+                You&apos;re all set! You can now start creating rooms and playing with friends.
               </p>
+              <Link href="/rooms" className="w-full block">
+                <Button className="w-full" size="lg">
+                  Go to Rooms
+                </Button>
+              </Link>
+              <div className="text-center">
+                <Link href="/" className="text-sm text-muted-foreground hover:underline">
+                  Back to Home
+                </Link>
+              </div>
             </CardContent>
           </Card>
         </div>

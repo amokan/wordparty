@@ -46,7 +46,6 @@ export async function createRoom() {
     .insert({
       room_code: roomCode,
       host_id: user.id,
-      is_active: true,
     })
     .select()
     .single();

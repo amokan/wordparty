@@ -41,7 +41,7 @@ export function SignUpForm({
     }
 
     try {
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -53,18 +53,8 @@ export function SignUpForm({
       });
       if (error) throw error;
 
-      // Create user profile in users table
-      if (data.user) {
-        const { error: profileError } = await supabase
-          .from("users")
-          .insert({
-            id: data.user.id,
-            username,
-            email,
-          });
-
-        if (profileError) throw profileError;
-      }
+      // User profile is automatically created by database trigger
+      // No need to manually insert here
 
       router.push("/auth/sign-up-success");
     } catch (error: unknown) {

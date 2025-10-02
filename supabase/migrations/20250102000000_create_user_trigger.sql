@@ -8,11 +8,10 @@ SECURITY DEFINER
 SET search_path = ''
 AS $$
 BEGIN
-  INSERT INTO public.users (id, username, email)
+  INSERT INTO public.users (id, username)
   VALUES (
     NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'username', 'user_' || substr(NEW.id::text, 1, 8)),
-    NEW.email
+    COALESCE(NEW.raw_user_meta_data->>'username', 'user_' || substr(NEW.id::text, 1, 8))
   )
   ON CONFLICT (id) DO NOTHING;
   RETURN NEW;

@@ -1,7 +1,7 @@
 -- Create rooms table (persistent lobbies)
 create table public.rooms (
   id uuid primary key default uuid_generate_v4(),
-  code text unique not null,
+  room_code text unique not null,
   host_id uuid references public.users(id) on delete set null,
   created_at timestamptz default now()
 );
@@ -23,5 +23,5 @@ create policy "Host can update their room"
   using ((select auth.uid()) = host_id);
 
 -- Create index for room code lookups
-create index idx_rooms_code on public.rooms(code);
+create index idx_rooms_code on public.rooms(room_code);
 create index idx_rooms_host on public.rooms(host_id);

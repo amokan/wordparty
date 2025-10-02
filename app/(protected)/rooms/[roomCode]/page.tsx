@@ -2,7 +2,11 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
+import { RoomCodeCard } from "./room-code-card";
+import { RoomCleanup } from "./room-cleanup";
+import { StartGameForm } from "./start-game-form";
+import { GameStartListener } from "./game-start-listener";
+import { leaveRoom } from "./actions";
 
 interface RoomLobbyPageProps {
   params: Promise<{
@@ -30,7 +34,6 @@ export default async function RoomLobbyPage({ params }: RoomLobbyPageProps) {
       host:users!rooms_host_id_fkey(username, avatar_url)
     `)
     .eq("room_code", roomCode)
-    .eq("is_active", true)
     .single();
 
   if (!room) {
@@ -65,10 +68,22 @@ export default async function RoomLobbyPage({ params }: RoomLobbyPageProps) {
     user: Array.isArray(p.user) ? p.user[0] : p.user
   }));
 
+  // Fetch available categories for game creation
+  const { data: categoryData } = await supabase
+    .from("story_templates")
+    .select("category")
+    .eq("active", true);
+
+  const categories = Array.from(
+    new Set(categoryData?.map((t) => t.category) || [])
+  ).sort();
+
   const isHost = room.host_id === user.id;
 
   return (
     <div className="flex-1 flex flex-col gap-8 w-full max-w-3xl mx-auto">
+      <RoomCleanup roomId={room.id} userId={user.id} roomCode={roomCode} />
+      <GameStartListener roomId={room.id} userId={user.id} />
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Room {roomCode}</h1>
@@ -76,23 +91,13 @@ export default async function RoomLobbyPage({ params }: RoomLobbyPageProps) {
             Hosted by {room.host?.username || "Unknown"}
           </p>
         </div>
-        <Link href="/rooms">
-          <Button variant="outline">Leave Room</Button>
-        </Link>
+        <form action={leaveRoom.bind(null, room.id)}>
+          <Button variant="outline" type="submit">Leave Room</Button>
+        </form>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Room Code</CardTitle>
-            <CardDescription>Share this code with friends</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-mono font-bold tracking-wider">
-              {roomCode}
-            </div>
-          </CardContent>
-        </Card>
+        <RoomCodeCard roomCode={roomCode} />
 
         <Card>
           <CardHeader>
@@ -121,23 +126,9 @@ export default async function RoomLobbyPage({ params }: RoomLobbyPageProps) {
         </Card>
       </div>
 
-      {isHost && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Start a Game</CardTitle>
-            <CardDescription>
-              As the host, you can start a new game when ready
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button size="lg" className="w-full" disabled>
-              Start Game (Coming Soon)
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {!isHost && (
+      {isHost ? (
+        <StartGameForm roomId={room.id} categories={categories} />
+      ) : (
         <Card>
           <CardHeader>
             <CardTitle>Waiting for Host</CardTitle>
