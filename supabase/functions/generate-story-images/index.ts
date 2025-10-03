@@ -1,5 +1,5 @@
-import { GoogleGenAI } from "npm:@google/genai@1.22.0";
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { GoogleGenAI } from "@google/genai";
+import { createClient } from "@supabase/supabase-js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
