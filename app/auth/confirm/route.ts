@@ -9,6 +9,12 @@ export async function GET(request: NextRequest) {
   const type = searchParams.get("type") as EmailOtpType | null;
   const next = searchParams.get("next") ?? "/rooms";
 
+  // Debug logging - log all search params to help diagnose the issue
+  console.log("Auth confirm URL:", request.url);
+  console.log("Search params:", Object.fromEntries(searchParams.entries()));
+  console.log("token_hash:", token_hash);
+  console.log("type:", type);
+
   if (token_hash && type) {
     const supabase = await createClient();
 

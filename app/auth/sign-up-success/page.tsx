@@ -5,6 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
 export default function Page() {
@@ -15,31 +16,31 @@ export default function Page() {
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl">
-                📧 Check Your Email
+                Welcome to Word Party! 🎉
               </CardTitle>
-              <CardDescription>Almost there! Just one more step</CardDescription>
+              <CardDescription>Your account has been created</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3">
                 <p className="text-sm text-muted-foreground">
-                  We&apos;ve sent you a confirmation email. Please check your inbox and click the confirmation link to activate your account.
+                  You&apos;re all set! You can now start creating rooms and playing with friends.
                 </p>
-                <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                  <p className="text-sm text-blue-700 dark:text-blue-300">
-                    💡 <strong>Tip:</strong> Don&apos;t forget to check your spam folder if you don&apos;t see the email.
+                <div className="bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800 rounded-lg p-3">
+                  <p className="text-sm text-green-700 dark:text-green-300">
+                    🚀 <strong>Ready to play?</strong> Create your first room or join an existing one!
                   </p>
                 </div>
               </div>
 
-              <div className="text-center space-y-2">
-                <p className="text-xs text-muted-foreground">
-                  After confirming your email, you can start creating rooms and playing with friends!
-                </p>
-              </div>
+              <Link href="/rooms" className="w-full block">
+                <Button className="w-full" size="lg">
+                  Go to Rooms
+                </Button>
+              </Link>
 
               <div className="text-center">
-                <Link href="/auth/login" className="text-sm text-muted-foreground hover:underline">
-                  ← Back to Login
+                <Link href="/" className="text-sm text-muted-foreground hover:underline">
+                  Back to Home
                 </Link>
               </div>
             </CardContent>
