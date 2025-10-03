@@ -16,22 +16,31 @@ export default function Page() {
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl">
-                Welcome to Word Party! 🎉
+                📧 Check Your Email
               </CardTitle>
-              <CardDescription>Your account has been created</CardDescription>
+              <CardDescription>Almost there! Just one more step</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                You&apos;re all set! You can now start creating rooms and playing with friends.
-              </p>
-              <Link href="/rooms" className="w-full block">
-                <Button className="w-full" size="lg">
-                  Go to Rooms
-                </Button>
-              </Link>
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  We&apos;ve sent you a confirmation email. Please check your inbox and click the confirmation link to activate your account.
+                </p>
+                <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    💡 <strong>Tip:</strong> Don&apos;t forget to check your spam folder if you don&apos;t see the email.
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-center space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  After confirming your email, you can start creating rooms and playing with friends!
+                </p>
+              </div>
+
               <div className="text-center">
-                <Link href="/" className="text-sm text-muted-foreground hover:underline">
-                  Back to Home
+                <Link href="/auth/login" className="text-sm text-muted-foreground hover:underline">
+                  ← Back to Login
                 </Link>
               </div>
             </CardContent>
