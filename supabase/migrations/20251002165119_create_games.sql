@@ -1,6 +1,6 @@
 -- Create games table (individual game sessions within rooms)
 create table public.games (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   room_id uuid references public.rooms(id) on delete cascade,
   template_id uuid references public.story_templates(id) on delete set null,
   status game_status default 'waiting',

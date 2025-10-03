@@ -1,6 +1,6 @@
 -- Create word_submissions table (tracks submitted words during gameplay)
 create table public.word_submissions (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   game_id uuid references public.games(id) on delete cascade,
   user_id uuid references public.users(id) on delete cascade,
   position integer not null,

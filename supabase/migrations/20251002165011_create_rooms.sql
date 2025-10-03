@@ -1,6 +1,6 @@
 -- Create rooms table (persistent lobbies)
 create table public.rooms (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   room_code text unique not null,
   host_id uuid references public.users(id) on delete set null,
   created_at timestamptz default now()

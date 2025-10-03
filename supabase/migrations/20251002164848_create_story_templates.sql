@@ -1,6 +1,6 @@
 -- Create story_templates table
 create table public.story_templates (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   title text not null,
   template jsonb not null,
   category extensions.citext,

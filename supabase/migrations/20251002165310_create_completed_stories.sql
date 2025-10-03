@@ -1,6 +1,6 @@
 -- Create completed_stories table (final stories with AI-generated images)
 create table public.completed_stories (
-  id uuid primary key default uuid_generate_v4(),
+  id uuid primary key default gen_random_uuid(),
   game_id uuid unique references public.games(id) on delete cascade,
   story_text text not null,
   image_urls text[],
