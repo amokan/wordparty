@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
@@ -33,6 +34,9 @@ export function CompletedStoryView({
   const [story, setStory] = useState<CompletedStory | null>(null);
   const [isGeneratingImages, setIsGeneratingImages] = useState(false);
   const [hasCalledEdgeFunction, setHasCalledEdgeFunction] = useState(false);
+  const [stylizedStyle, setStylizedStyle] = useState(false);
+  const [stylizedUrls, setStylizedUrls] = useState<string[]>([]);
+  const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
 
   // Fetch completed story
   useEffect(() => {
@@ -121,6 +125,118 @@ export function CompletedStoryView({
       if (pollInterval) clearInterval(pollInterval);
     };
   }, [gameId, isGeneratingImages]);
+
+  // Generate stylized composite images
+  useEffect(() => {
+    if (!stylizedStyle || !story?.image_urls) {
+      setStylizedUrls([]);
+      return;
+    }
+
+    const generateStylizedImages = async () => {
+      const urls: string[] = [];
+
+      for (let i = 0; i < story.image_urls!.length; i++) {
+        const imageUrl = story.image_urls![i];
+        const canvas = canvasRefs.current[i];
+
+        if (!canvas) continue;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) continue;
+
+        // Load the image
+        const img = new window.Image();
+        img.crossOrigin = 'anonymous';
+
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => {
+            // Stylized image dimensions
+            const padding = 40;
+            const textHeight = 140;
+            const imageWidth = img.width;
+            const imageHeight = img.height;
+            const canvasWidth = imageWidth + (padding * 2);
+            const canvasHeight = imageHeight + (padding * 2) + textHeight;
+
+            // Set canvas size
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+
+            // Draw white background (stylized frame)
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+            // Draw the AI image
+            ctx.drawImage(img, padding, padding, imageWidth, imageHeight);
+
+            // Add story text in bottom white space
+            ctx.fillStyle = '#1a1a1a';
+            ctx.font = '18px "Comic Sans MS", cursive, sans-serif';
+            ctx.textAlign = 'center';
+
+            // Word wrap the text
+            const maxWidth = canvasWidth - (padding * 2);
+            const lines = wrapText(ctx, story.story_text, maxWidth);
+            const lineHeight = 24;
+            const textY = imageHeight + (padding * 2) + 30;
+
+            // Only show first few lines to fit in stylized bottom
+            const maxLines = 4;
+            const visibleLines = lines.slice(0, maxLines);
+
+            visibleLines.forEach((line, idx) => {
+              ctx.fillText(line, canvasWidth / 2, textY + (idx * lineHeight));
+            });
+
+            // Add "..." if text is truncated
+            if (lines.length > maxLines) {
+              ctx.fillText('...', canvasWidth / 2, textY + (maxLines * lineHeight));
+            }
+
+            resolve();
+          };
+
+          img.onerror = reject;
+          img.src = imageUrl;
+        });
+
+        // Convert canvas to data URL
+        const dataUrl = canvas.toDataURL('image/png');
+        urls.push(dataUrl);
+      }
+
+      setStylizedUrls(urls);
+    };
+
+    generateStylizedImages();
+  }, [stylizedStyle, story?.image_urls, story?.story_text]);
+
+  // Helper function to wrap text
+  const wrapText = (
+    ctx: CanvasRenderingContext2D,
+    text: string,
+    maxWidth: number
+  ): string[] => {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let currentLine = '';
+
+    for (const word of words) {
+      const testLine = currentLine + (currentLine ? ' ' : '') + word;
+      const metrics = ctx.measureText(testLine);
+
+      if (metrics.width > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+
+    if (currentLine) lines.push(currentLine);
+    return lines;
+  };
 
   const callImageGenerationEdgeFunction = async (
     gameId: string,
@@ -215,19 +331,74 @@ export function CompletedStoryView({
           <CardHeader>
             <CardTitle>✨ AI Generated Illustration</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {/* Stylized image toggle */}
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="stylized-style"
+                checked={stylizedStyle}
+                onCheckedChange={(checked) => setStylizedStyle(checked as boolean)}
+              />
+              <label
+                htmlFor="stylized-style"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+              >
+                Stylized Frame (add story text below image)
+              </label>
+            </div>
+
+            {/* Hidden canvases for compositing */}
+            {story.image_urls.map((_, index) => (
+              <canvas
+                key={`canvas-${index}`}
+                ref={(el) => { canvasRefs.current[index] = el; }}
+                style={{ display: 'none' }}
+              />
+            ))}
+
+            {/* Display images */}
             {story.image_urls.map((url, index) => (
               <div key={index} className="w-full rounded-lg overflow-hidden bg-muted">
-                <Image
-                  src={url}
-                  alt={`Story illustration ${index + 1}`}
-                  width={1344}
-                  height={768}
-                  className="w-full h-auto"
-                  sizes="(max-width: 768px) 100vw, 768px"
-                />
+                {stylizedStyle && stylizedUrls[index] ? (
+                  // Show stylized composite
+                  <div className="bg-white p-2 inline-block">
+                    <img
+                      src={stylizedUrls[index]}
+                      alt={`Story illustration ${index + 1} - Stylized frame style`}
+                      className="w-full h-auto"
+                    />
+                  </div>
+                ) : (
+                  // Show original image
+                  <Image
+                    src={url}
+                    alt={`Story illustration ${index + 1}`}
+                    width={1344}
+                    height={768}
+                    className="w-full h-auto"
+                    sizes="(max-width: 768px) 100vw, 768px"
+                  />
+                )}
               </div>
             ))}
+
+            {/* Download button for stylized version */}
+            {stylizedStyle && stylizedUrls.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  stylizedUrls.forEach((dataUrl, index) => {
+                    const link = document.createElement('a');
+                    link.href = dataUrl;
+                    link.download = `story-stylized-${gameId}-${index}.png`;
+                    link.click();
+                  });
+                }}
+                className="w-full"
+              >
+                📸 Download Stylized Image{stylizedUrls.length > 1 ? 's' : ''}
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
