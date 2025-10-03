@@ -48,6 +48,12 @@ export default async function GamePage({ params }: GamePageProps) {
     return redirect("/rooms");
   }
 
+  // Get total participant count for this game
+  const { count: participantCount } = await supabase
+    .from("game_participants")
+    .select("*", { count: "exact", head: true })
+    .eq("game_id", gameId);
+
   // For playing status, show word submission
   if (game.status === "playing") {
     return (
@@ -55,6 +61,7 @@ export default async function GamePage({ params }: GamePageProps) {
         gameId={gameId}
         template={game.template}
         wordsAssigned={participant.words_assigned || []}
+        totalParticipants={participantCount || 1}
       />
     );
   }

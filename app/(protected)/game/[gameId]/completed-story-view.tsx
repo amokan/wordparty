@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,9 +34,150 @@ export function CompletedStoryView({
   const [story, setStory] = useState<CompletedStory | null>(null);
   const [isGeneratingImages, setIsGeneratingImages] = useState(false);
   const [hasCalledEdgeFunction, setHasCalledEdgeFunction] = useState(false);
-  const [stylizedStyle, setStylizedStyle] = useState(false);
+  const [stylizedStyle, setStylizedStyle] = useState(true);
   const [stylizedUrls, setStylizedUrls] = useState<string[]>([]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [retryAttempt, setRetryAttempt] = useState(0);
+  const [generationProgress, setGenerationProgress] = useState<string>("");
+  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number | null>(null);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([]);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const generationStartTime = useRef<number | null>(null);
+
+  // Check if we've already tried generating images for this game (persistent across refreshes)
+  const getStorageKey = (gameId: string) => `image-generation-${gameId}`;
+  const getRateLimitKey = (gameId: string) => `rate-limit-${gameId}`;
+
+  // Rate limiting helper functions
+  const isRateLimited = useCallback((gameId: string): boolean => {
+    const key = getRateLimitKey(gameId);
+    const lastAttempt = localStorage.getItem(key);
+    if (!lastAttempt) return false;
+
+    const timeSinceLastAttempt = Date.now() - parseInt(lastAttempt);
+    const rateLimitMs = 30000; // 30 seconds between manual retries
+    return timeSinceLastAttempt < rateLimitMs;
+  }, []);
+
+  const setRateLimit = useCallback((gameId: string): void => {
+    const key = getRateLimitKey(gameId);
+    localStorage.setItem(key, Date.now().toString());
+  }, []);
+
+  const getRemainingCooldown = useCallback((gameId: string): number => {
+    const key = getRateLimitKey(gameId);
+    const lastAttempt = localStorage.getItem(key);
+    if (!lastAttempt) return 0;
+
+    const timeSinceLastAttempt = Date.now() - parseInt(lastAttempt);
+    const rateLimitMs = 30000;
+    return Math.max(0, Math.ceil((rateLimitMs - timeSinceLastAttempt) / 1000));
+  }, []);
+
+  // Helper function to create timeout promise
+  const createTimeoutPromise = (ms: number) => {
+    return new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Request timeout')), ms);
+    });
+  };
+
+  // Helper function for exponential backoff delay
+  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+  const callImageGenerationEdgeFunction = useCallback(async (
+    gameId: string,
+    storyText: string,
+    attempt: number = 1
+  ): Promise<void> => {
+    const maxAttempts = 3;
+    const timeoutMs = 45000; // 45 second timeout
+
+    try {
+      setErrorMessage(null);
+      setRetryAttempt(attempt);
+
+      const supabase = createClient();
+
+      // Get the session token
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        throw new Error("Authentication required. Please refresh the page.");
+      }
+
+      const supabaseUrl =
+        process.env.NEXT_PUBLIC_SUPABASE_URL || "http://127.0.0.1:54321";
+      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/generate-story-images`;
+
+      // Create abort controller for this request
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+
+      // Race between fetch and timeout
+      const fetchPromise = fetch(edgeFunctionUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          gameId,
+          storyText,
+        }),
+        signal: abortController.signal,
+      });
+
+      const response = await Promise.race([
+        fetchPromise,
+        createTimeoutPromise(timeoutMs)
+      ]) as Response;
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Server error (${response.status}): ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log("Edge Function success:", result);
+
+      // Clear the abort controller reference
+      abortControllerRef.current = null;
+
+    } catch (error) {
+      console.error(`Edge Function error (attempt ${attempt}):`, error);
+
+      // Clear the abort controller reference
+      abortControllerRef.current = null;
+
+      // If this wasn't the last attempt, retry with exponential backoff
+      if (attempt < maxAttempts) {
+        const backoffDelay = Math.pow(2, attempt - 1) * 2000; // 2s, 4s, 8s
+        console.log(`Retrying in ${backoffDelay}ms... (attempt ${attempt + 1}/${maxAttempts})`);
+
+        await delay(backoffDelay);
+        return callImageGenerationEdgeFunction(gameId, storyText, attempt + 1);
+      }
+
+      // All attempts failed
+      setIsGeneratingImages(false);
+
+      let userMessage = "Failed to generate image after multiple attempts.";
+      if (error instanceof Error) {
+        if (error.message.includes('timeout')) {
+          userMessage = "Image generation timed out. This can happen with complex stories.";
+        } else if (error.message.includes('Authentication')) {
+          userMessage = error.message;
+        } else if (error.message.includes('Server error')) {
+          userMessage = "Server temporarily unavailable. Please try again.";
+        }
+      }
+
+      setErrorMessage(userMessage);
+    }
+  }, [setErrorMessage, setIsGeneratingImages, setRetryAttempt]);
 
   // Fetch completed story
   useEffect(() => {
@@ -56,17 +197,24 @@ export function CompletedStoryView({
       if (data) {
         setStory(data);
 
-        // If images not generated yet, trigger Edge Function
-        if (!data.images_generated && !hasCalledEdgeFunction) {
+        // Check if we've already attempted generation (persistent check)
+        const storageKey = getStorageKey(gameId);
+        const hasAttempted = localStorage.getItem(storageKey);
+
+        // If images not generated yet and we haven't attempted, trigger Edge Function
+        if (!data.images_generated && !hasAttempted && !hasCalledEdgeFunction) {
           setHasCalledEdgeFunction(true);
           setIsGeneratingImages(true);
+          generationStartTime.current = Date.now();
+          setGenerationProgress("Generating AI illustration...");
+          localStorage.setItem(storageKey, 'true');
           await callImageGenerationEdgeFunction(gameId, data.story_text);
         }
       }
     };
 
     fetchStory();
-  }, [gameId, hasCalledEdgeFunction]);
+  }, [gameId, hasCalledEdgeFunction, callImageGenerationEdgeFunction]);
 
   // Listen for image generation completion
   useEffect(() => {
@@ -88,6 +236,14 @@ export function CompletedStoryView({
             console.log("Images generated, updating story state");
             setStory(payload.new as CompletedStory);
             setIsGeneratingImages(false);
+            setErrorMessage(null);
+            setGenerationProgress("");
+            setEstimatedTimeRemaining(null);
+            generationStartTime.current = null;
+
+            // Clear the generation attempt flag since it succeeded
+            const storageKey = getStorageKey(gameId);
+            localStorage.removeItem(storageKey);
           }
         }
       )
@@ -115,7 +271,12 @@ export function CompletedStoryView({
           console.log("Polling detected images ready, updating state");
           setStory(data);
           setIsGeneratingImages(false);
+          setErrorMessage(null);
           clearInterval(pollInterval!);
+
+          // Clear the generation attempt flag since it succeeded
+          const storageKey = getStorageKey(gameId);
+          localStorage.removeItem(storageKey);
         }
       }, 3000);
     }
@@ -125,6 +286,40 @@ export function CompletedStoryView({
       if (pollInterval) clearInterval(pollInterval);
     };
   }, [gameId, isGeneratingImages]);
+
+  // Progress tracking effect
+  useEffect(() => {
+    if (!isGeneratingImages) return;
+
+    const progressMessages = [
+      "Analyzing your story...",
+      "Generating AI illustration...",
+      "Adding creative details...",
+      "Finalizing artwork...",
+      "Almost ready..."
+    ];
+
+    let messageIndex = 0;
+    const progressInterval: NodeJS.Timeout = setInterval(() => {
+      if (messageIndex < progressMessages.length) {
+        setGenerationProgress(progressMessages[messageIndex]);
+        messageIndex++;
+
+        // Update estimated time remaining
+        if (generationStartTime.current) {
+          const elapsed = Date.now() - generationStartTime.current;
+          const avgTimePerStep = elapsed / messageIndex;
+          const remainingSteps = progressMessages.length - messageIndex;
+          const estimated = Math.max(0, Math.round((remainingSteps * avgTimePerStep) / 1000));
+          setEstimatedTimeRemaining(estimated);
+        }
+      }
+    }, 8000);
+
+    return () => {
+      if (progressInterval) clearInterval(progressInterval);
+    };
+  }, [isGeneratingImages]);
 
   // Generate stylized composite images
   useEffect(() => {
@@ -238,49 +433,61 @@ export function CompletedStoryView({
     return lines;
   };
 
-  const callImageGenerationEdgeFunction = async (
-    gameId: string,
-    storyText: string
-  ) => {
-    try {
-      const supabase = createClient();
+  // Manual retry function for user-triggered retries
+  const handleManualRetry = async () => {
+    if (!story || isGeneratingImages) return;
 
-      // Get the session token
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        console.error("No session found");
-        setIsGeneratingImages(false);
-        return;
-      }
-
-      const supabaseUrl =
-        process.env.NEXT_PUBLIC_SUPABASE_URL || "http://127.0.0.1:54321";
-      const edgeFunctionUrl = `${supabaseUrl}/functions/v1/generate-story-images`;
-
-      const response = await fetch(edgeFunctionUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          gameId,
-          storyText,
-        }),
-      });
-
-      if (!response.ok) {
-        console.error("Edge Function error:", await response.text());
-        setIsGeneratingImages(false);
-      }
-    } catch (error) {
-      console.error("Error calling Edge Function:", error);
-      setIsGeneratingImages(false);
+    // Check rate limiting
+    if (isRateLimited(gameId)) {
+      const remaining = getRemainingCooldown(gameId);
+      setErrorMessage(`Please wait a moment before trying again. Ready in ${remaining} seconds.`);
+      return;
     }
+
+    // Set rate limit for this attempt
+    setRateLimit(gameId);
+
+    // Clear the storage flag to allow retry
+    const storageKey = getStorageKey(gameId);
+    localStorage.removeItem(storageKey);
+
+    setIsGeneratingImages(true);
+    setErrorMessage(null);
+    setRetryAttempt(0);
+    setHasCalledEdgeFunction(false);
+    generationStartTime.current = Date.now();
+    setGenerationProgress("Retrying image generation...");
+
+    // Set the flag again to prevent other instances from calling
+    localStorage.setItem(storageKey, 'true');
+    await callImageGenerationEdgeFunction(gameId, story.story_text);
   };
+
+  // Cooldown timer effect
+  useEffect(() => {
+    if (errorMessage && errorMessage.includes('wait')) {
+      const cooldownInterval = setInterval(() => {
+        const remaining = getRemainingCooldown(gameId);
+        setCooldownSeconds(remaining);
+
+        if (remaining <= 0) {
+          setCooldownSeconds(0);
+          clearInterval(cooldownInterval);
+        }
+      }, 1000);
+
+      return () => clearInterval(cooldownInterval);
+    }
+  }, [gameId, errorMessage, getRemainingCooldown]);
+
+  // Cleanup abort controller on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   if (!story) {
     return (
@@ -317,10 +524,61 @@ export function CompletedStoryView({
       {isGeneratingImages && (
         <Card>
           <CardContent className="pt-6">
-            <div className="text-center">
-              <p className="text-muted-foreground">
-                ✨ Generating AI illustration for your story...
+            <div className="text-center space-y-3">
+              <div className="flex items-center justify-center space-x-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></div>
+                <p className="text-muted-foreground">
+                  ✨ {generationProgress || "Generating AI illustration for your story..."}
+                </p>
+              </div>
+
+              {retryAttempt > 1 && (
+                <p className="text-sm text-muted-foreground">
+                  Attempt {retryAttempt} of 3
+                </p>
+              )}
+
+              {estimatedTimeRemaining !== null && estimatedTimeRemaining > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Estimated time remaining: {estimatedTimeRemaining}s
+                </p>
+              )}
+
+              <div className="w-full bg-muted rounded-full h-2">
+                <div
+                  className="bg-primary h-2 rounded-full transition-all duration-1000 ease-out"
+                  style={{
+                    width: generationStartTime.current
+                      ? `${Math.min(95, (Date.now() - generationStartTime.current) / 450)}%`
+                      : '10%'
+                  }}
+                ></div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Error display section */}
+      {errorMessage && !isGeneratingImages && (
+        <Card className="border-destructive">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-4">
+              <p className="text-destructive">
+                ⚠️ {errorMessage}
               </p>
+              <Button
+                variant="outline"
+                onClick={handleManualRetry}
+                disabled={cooldownSeconds > 0}
+                className="mx-auto"
+              >
+                {cooldownSeconds > 0 ? (
+                  <>⏳ Wait {cooldownSeconds}s</>
+                ) : (
+                  <>🔄 Try Again</>
+                )}
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -362,6 +620,7 @@ export function CompletedStoryView({
                 {stylizedStyle && stylizedUrls[index] ? (
                   // Show stylized composite
                   <div className="bg-white p-2 inline-block">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={stylizedUrls[index]}
                       alt={`Story illustration ${index + 1} - Stylized frame style`}

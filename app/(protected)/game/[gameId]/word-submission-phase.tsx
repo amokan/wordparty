@@ -18,6 +18,7 @@ interface WordSubmissionPhaseProps {
   gameId: string;
   template: Template;
   wordsAssigned: number[];
+  totalParticipants: number;
 }
 
 interface WordOption {
@@ -29,6 +30,7 @@ export function WordSubmissionPhase({
   gameId,
   template,
   wordsAssigned,
+  totalParticipants,
 }: WordSubmissionPhaseProps) {
   const router = useRouter();
   const [shuffledPositions, setShuffledPositions] = useState<number[]>([]);
@@ -165,22 +167,55 @@ export function WordSubmissionPhase({
   }, [gameId, router, isComplete]);
 
   if (isComplete) {
+    const isSinglePlayer = totalParticipants === 1;
+
     return (
       <div className="flex-1 flex flex-col gap-8 w-full max-w-3xl mx-auto items-center justify-center">
-        <Card>
-          <CardHeader>
-            <CardTitle>All Done! ✅</CardTitle>
-            <CardDescription>
-              You&apos;ve submitted all your words. Waiting for other players...
+        <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
+          <CardHeader className="text-center space-y-4">
+            <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/40 rounded-full flex items-center justify-center">
+              <span className="text-2xl">✨</span>
+            </div>
+            <CardTitle className="text-2xl font-bold text-green-700 dark:text-green-300">
+              {isSinglePlayer ? "Words Complete!" : "All Done!"}
+            </CardTitle>
+            <CardDescription className="text-lg">
+              {isSinglePlayer ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-center">
+                    <span>Building your story</span>
+                    <span className="ml-1">
+                      <span className="animate-bounce">.</span>
+                      <span className="animate-bounce" style={{ animationDelay: '0.2s' }}>.</span>
+                      <span className="animate-bounce" style={{ animationDelay: '0.4s' }}>.</span>
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Weaving your words together into something magical
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p>You&apos;ve submitted all your words!</p>
+                  <div className="flex items-center justify-center space-x-2">
+                    <div className="animate-pulse flex space-x-1">
+                      <div className="w-2 h-2 bg-green-600 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-green-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                      <div className="w-2 h-2 bg-green-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    </div>
+                    <span className="text-green-700 dark:text-green-300">Waiting for other players</span>
+                  </div>
+                </div>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Button
               onClick={() => router.refresh()}
               variant="outline"
-              className="w-full"
+              className="w-full border-green-300 hover:bg-green-50 dark:border-green-700 dark:hover:bg-green-900/20"
             >
-              Check if Story is Ready
+              {isSinglePlayer ? "🔄 Check Story Status" : "🔄 Check if Story is Ready"}
             </Button>
           </CardContent>
         </Card>

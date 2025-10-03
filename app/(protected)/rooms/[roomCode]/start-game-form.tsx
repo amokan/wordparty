@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { startGame } from "./actions";
 
@@ -22,6 +22,14 @@ export function StartGameForm({ roomId, categories }: StartGameFormProps) {
   const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // Set a random category on mount
+  useEffect(() => {
+    if (categories.length > 0 && !selectedCategory) {
+      const randomIndex = Math.floor(Math.random() * categories.length);
+      setSelectedCategory(categories[randomIndex]);
+    }
+  }, [categories, selectedCategory]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,7 +62,7 @@ export function StartGameForm({ roomId, categories }: StartGameFormProps) {
             </label>
             <Select value={selectedCategory} onValueChange={setSelectedCategory}>
               <SelectTrigger id="category">
-                <SelectValue placeholder="Choose a category..." />
+                <SelectValue placeholder="Loading categories..." />
               </SelectTrigger>
               <SelectContent>
                 {categories.map((category) => (

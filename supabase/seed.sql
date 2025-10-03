@@ -1135,8 +1135,6 @@ insert into public.word_bank (word, type, active) values
 
 -- Numbers
 insert into public.word_bank (word, type, active) values
-  ('0', 'number', true),
-  ('1', 'number', true),
   ('1,000', 'number', true),
   ('10', 'number', true),
   ('10,000', 'number', true),
