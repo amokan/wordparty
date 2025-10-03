@@ -3,7 +3,7 @@ create table public.story_templates (
   id uuid primary key default uuid_generate_v4(),
   title text not null,
   template jsonb not null,
-  category citext,
+  category extensions.citext,
   active boolean default true,
   created_at timestamptz default now()
 );

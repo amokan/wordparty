@@ -1,7 +1,7 @@
 -- Create word_bank table for example words
 create table public.word_bank (
   id uuid primary key default uuid_generate_v4(),
-  word citext unique not null,
+  word extensions.citext unique not null,
   type word_type not null,
   active boolean default true,
   created_at timestamptz default now()
