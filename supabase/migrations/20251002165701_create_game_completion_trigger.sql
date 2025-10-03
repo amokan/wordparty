@@ -63,14 +63,7 @@ begin
     insert into public.completed_stories (game_id, story_text)
     values (NEW.game_id, final_story);
 
-    -- Broadcast completion via realtime
-    perform realtime.broadcast_changes(
-      'game:' || NEW.game_id::text,
-      'INSERT',
-      'completed_stories',
-      (select row_to_json(cs.*) from public.completed_stories cs where cs.game_id = NEW.game_id),
-      null
-    );
+    -- Note: Clients listen for game status changes via Supabase realtime subscriptions
   end if;
 
   return NEW;

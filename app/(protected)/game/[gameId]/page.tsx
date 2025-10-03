@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { WordSubmissionPhase } from "./word-submission-phase";
+import { CompletedStoryView } from "./completed-story-view";
 
 interface GamePageProps {
   params: Promise<{
@@ -46,15 +48,38 @@ export default async function GamePage({ params }: GamePageProps) {
     return redirect("/rooms");
   }
 
+  // For playing status, show word submission
+  if (game.status === "playing") {
+    return (
+      <WordSubmissionPhase
+        gameId={gameId}
+        template={game.template}
+        wordsAssigned={participant.words_assigned || []}
+      />
+    );
+  }
+
+  // For finished status, show completed story
+  if (game.status === "finished") {
+    return (
+      <CompletedStoryView
+        gameId={gameId}
+        roomCode={game.room.room_code}
+        isHost={game.room.host_id === user.id}
+      />
+    );
+  }
+
+  // Waiting or other status
   return (
     <div className="flex-1 flex flex-col gap-8 w-full max-w-3xl mx-auto">
       <div className="text-center">
-        <h1 className="text-3xl font-bold">Game Started!</h1>
+        <h1 className="text-3xl font-bold">Game</h1>
         <p className="text-muted-foreground">
           Status: {game.status}
         </p>
         <p className="text-sm text-muted-foreground mt-4">
-          Template: {game.template?.category}
+          Category: {game.template?.category}
         </p>
       </div>
     </div>

@@ -14,6 +14,12 @@ export default function ProtectedLayout({
           <div className="w-full max-w-5xl flex justify-between items-center p-3 px-5 text-sm">
             <div className="flex gap-5 items-center font-semibold">
               <Link href={"/"}>🎉 Word Party</Link>
+              <Link href={"/rooms"} className="text-muted-foreground hover:text-foreground">
+                Rooms
+              </Link>
+              <Link href={"/history"} className="text-muted-foreground hover:text-foreground">
+                History
+              </Link>
             </div>
             <AuthButton />
           </div>

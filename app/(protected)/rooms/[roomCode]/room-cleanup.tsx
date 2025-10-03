@@ -21,8 +21,12 @@ export function RoomCleanup({ roomId, userId, roomCode }: RoomCleanupProps) {
     return () => {
       // Only cleanup if navigating away from this specific room page
       // and we haven't already executed cleanup
+      // DON'T cleanup if navigating to a game (they're still "in" the room)
       const currentPath = window.location.pathname;
-      if (!currentPath.includes(`/rooms/${roomCode}`) && !cleanupExecuted.current) {
+      const isLeavingRoom = !currentPath.includes(`/rooms/${roomCode}`);
+      const isGoingToGame = currentPath.includes('/game/');
+
+      if (isLeavingRoom && !isGoingToGame && !cleanupExecuted.current) {
         cleanupExecuted.current = true;
 
         const cleanup = async () => {

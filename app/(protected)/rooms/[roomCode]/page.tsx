@@ -133,7 +133,7 @@ export default async function RoomLobbyPage({ params }: RoomLobbyPageProps) {
           <CardHeader>
             <CardTitle>Waiting for Host</CardTitle>
             <CardDescription>
-              The host will start the game when everyone is ready
+              The host will start the story when everyone is ready
             </CardDescription>
           </CardHeader>
         </Card>

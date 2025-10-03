@@ -32,7 +32,7 @@ export default async function RoomsPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Your Rooms</h1>
-          <p className="text-muted-foreground">Create a new room or join an existing one</p>
+          <p className="text-muted-foreground">Create a new room or join an existing one to create stories</p>
         </div>
         <form action={createRoom}>
           <Button size="lg" type="submit">Create Room</Button>
@@ -69,7 +69,7 @@ export default async function RoomsPage() {
           <CardHeader>
             <CardTitle>No Active Rooms</CardTitle>
             <CardDescription>
-              Create a new room to start playing with friends
+              Create a new room to start creating stories with friends
             </CardDescription>
           </CardHeader>
         </Card>

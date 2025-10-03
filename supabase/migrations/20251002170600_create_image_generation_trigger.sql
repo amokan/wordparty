@@ -1,0 +1,3 @@
+-- Note: Image generation is triggered from the client when the story completion
+-- is detected via real-time subscriptions. This keeps the architecture simpler
+-- and avoids needing pg_net extension or complex async trigger patterns.

@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { startGame } from "./actions";
 
 interface StartGameFormProps {
@@ -18,6 +19,7 @@ interface StartGameFormProps {
 }
 
 export function StartGameForm({ roomId, categories }: StartGameFormProps) {
+  const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -27,7 +29,9 @@ export function StartGameForm({ roomId, categories }: StartGameFormProps) {
 
     setIsLoading(true);
     try {
-      await startGame(roomId, selectedCategory);
+      const result = await startGame(roomId, selectedCategory);
+      // Navigate after the server action completes successfully
+      router.push(`/game/${result.gameId}`);
     } catch (error) {
       console.error("Error starting game:", error);
       setIsLoading(false);
@@ -37,9 +41,9 @@ export function StartGameForm({ roomId, categories }: StartGameFormProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Start a Game</CardTitle>
+        <CardTitle>Start a Story</CardTitle>
         <CardDescription>
-          As the host, you can start a new game when ready
+          As the host, you can start a new story when ready
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -67,7 +71,7 @@ export function StartGameForm({ roomId, categories }: StartGameFormProps) {
             className="w-full"
             disabled={!selectedCategory || isLoading}
           >
-            {isLoading ? "Starting Game..." : "Start Game"}
+            {isLoading ? "Starting Story..." : "Start Story"}
           </Button>
         </form>
       </CardContent>
