@@ -236,8 +236,8 @@ export function GameWaitingPhase({
                   </div>
                   <span className={`text-xs px-3 py-1 rounded-full font-medium ${
                     participant.is_ready
-                      ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-                      : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100"
+                      ? "bg-green-600 text-white"
+                      : "bg-yellow-600 text-white"
                   }`}>
                     {participant.is_ready ? "Ready" : "Waiting"}
                   </span>
