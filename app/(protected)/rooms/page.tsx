@@ -89,9 +89,9 @@ export default async function RoomsPage() {
             <form action={joinRoom} className="flex gap-2">
               <Input
                 name="roomCode"
-                placeholder="Enter room code"
+                placeholder="Enter room code (8 characters)"
                 required
-                maxLength={6}
+                maxLength={8}
                 style={{ textTransform: 'uppercase' }}
               />
               <Button type="submit">Join</Button>

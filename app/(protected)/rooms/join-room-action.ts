@@ -2,13 +2,22 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { isValidRoomCode } from "@/lib/room-utils";
 
 export async function joinRoom(formData: FormData) {
-  const roomCode = formData.get("roomCode") as string;
+  const roomCode = (formData.get("roomCode") as string)?.toUpperCase().trim();
+
+  console.log("Attempting to join room:", roomCode);
 
   if (!roomCode) {
-    // TODO: Add proper error handling
-    return;
+    console.error("No room code provided");
+    // TODO: Implement proper error state management
+    redirect("/rooms?error=no-code");
+  }
+
+  if (!isValidRoomCode(roomCode)) {
+    console.error("Invalid room code format:", roomCode);
+    redirect("/rooms?error=invalid-code");
   }
 
   const supabase = await createClient();
@@ -26,13 +35,12 @@ export async function joinRoom(formData: FormData) {
   const { data: room, error: roomError } = await supabase
     .from("rooms")
     .select("id, room_code")
-    .eq("room_code", roomCode.toUpperCase())
+    .eq("room_code", roomCode)
     .single();
 
   if (roomError || !room) {
-    // TODO: Add proper error handling for room not found
     console.error("Room not found:", roomError);
-    return;
+    redirect("/rooms?error=room-not-found");
   }
 
   // Check if user is already a participant
@@ -42,6 +50,8 @@ export async function joinRoom(formData: FormData) {
     .eq("room_id", room.id)
     .eq("user_id", user.id)
     .single();
+
+  console.log("Existing participant check:", existingParticipant);
 
   // If not already a participant, add them
   if (!existingParticipant) {
@@ -54,8 +64,12 @@ export async function joinRoom(formData: FormData) {
 
     if (joinError) {
       console.error("Error joining room:", joinError);
-      return;
+      redirect("/rooms?error=join-failed");
     }
+
+    console.log("Successfully joined room");
+  } else {
+    console.log("User already in room");
   }
 
   // Redirect to the room

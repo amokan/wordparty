@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { WordSubmissionPhase } from "./word-submission-phase";
 import { CompletedStoryView } from "./completed-story-view";
+import { GameWaitingPhase } from "./game-waiting-phase";
+import { HostLeftListener } from "@/components/host-left-listener";
 
 interface GamePageProps {
   params: Promise<{
@@ -57,27 +59,64 @@ export default async function GamePage({ params }: GamePageProps) {
   // For playing status, show word submission
   if (game.status === "playing") {
     return (
-      <WordSubmissionPhase
-        gameId={gameId}
-        template={game.template}
-        wordsAssigned={participant.words_assigned || []}
-        totalParticipants={participantCount || 1}
-      />
+      <>
+        <WordSubmissionPhase
+          gameId={gameId}
+          template={game.template}
+          wordsAssigned={participant.words_assigned || []}
+          totalParticipants={participantCount || 1}
+        />
+        <HostLeftListener
+          gameId={gameId}
+          hostId={game.room.host_id}
+          roomCode={game.room.room_code}
+          userId={user.id}
+        />
+      </>
     );
   }
 
   // For finished status, show completed story
   if (game.status === "finished") {
     return (
-      <CompletedStoryView
-        gameId={gameId}
-        roomCode={game.room.room_code}
-        isHost={game.room.host_id === user.id}
-      />
+      <>
+        <CompletedStoryView
+          gameId={gameId}
+          roomCode={game.room.room_code}
+          isHost={game.room.host_id === user.id}
+        />
+        <HostLeftListener
+          gameId={gameId}
+          hostId={game.room.host_id}
+          roomCode={game.room.room_code}
+          userId={user.id}
+        />
+      </>
     );
   }
 
-  // Waiting or other status
+  // For waiting status, show ready check
+  if (game.status === "waiting") {
+    return (
+      <>
+        <GameWaitingPhase
+          gameId={gameId}
+          userId={user.id}
+          isHost={game.room.host_id === user.id}
+          templateCategory={game.template?.category || "Unknown"}
+          initialParticipant={participant}
+        />
+        <HostLeftListener
+          gameId={gameId}
+          hostId={game.room.host_id}
+          roomCode={game.room.room_code}
+          userId={user.id}
+        />
+      </>
+    );
+  }
+
+  // Other status (fallback)
   return (
     <div className="flex-1 flex flex-col gap-8 w-full max-w-3xl mx-auto">
       <div className="text-center">

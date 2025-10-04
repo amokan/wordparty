@@ -6,6 +6,7 @@ import { RoomCodeCard } from "./room-code-card";
 import { RoomCleanup } from "./room-cleanup";
 import { StartGameForm } from "./start-game-form";
 import { GameStartListener } from "./game-start-listener";
+import { ParticipantsList } from "./participants-list";
 import { leaveRoom } from "./actions";
 
 interface RoomLobbyPageProps {
@@ -78,6 +79,33 @@ export default async function RoomLobbyPage({ params }: RoomLobbyPageProps) {
     new Set(categoryData?.map((t) => t.category) || [])
   ).sort();
 
+  // Check if user has an active game in this room
+  const { data: activeGame } = await supabase
+    .from("games")
+    .select(`
+      id,
+      status,
+      template:story_templates(category)
+    `)
+    .eq("room_id", room.id)
+    .in("status", ["waiting", "playing"])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+
+  // Check if user is in the active game
+  let userInActiveGame = false;
+  if (activeGame) {
+    const { data: gameParticipant } = await supabase
+      .from("game_participants")
+      .select("user_id")
+      .eq("game_id", activeGame.id)
+      .eq("user_id", user.id)
+      .single();
+
+    userInActiveGame = !!gameParticipant;
+  }
+
   const isHost = room.host_id === user.id;
 
   return (
@@ -96,34 +124,43 @@ export default async function RoomLobbyPage({ params }: RoomLobbyPageProps) {
         </form>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <RoomCodeCard roomCode={roomCode} />
-
-        <Card>
+      {/* Game in Progress Alert */}
+      {activeGame && userInActiveGame && (
+        <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950 dark:border-blue-800">
           <CardHeader>
-            <CardTitle>Players</CardTitle>
-            <CardDescription>
-              {participants?.length || 0} {participants?.length === 1 ? "player" : "players"} in lobby
+            <CardTitle className="text-blue-800 dark:text-blue-200 flex items-center gap-2">
+              {activeGame.status === "waiting" ? "🎯 Game Starting" : "🎮 Game in Progress"}
+            </CardTitle>
+            <CardDescription className="text-blue-700 dark:text-blue-300">
+              {activeGame.status === "waiting"
+                ? "Waiting for players to be ready"
+                : "You have a game in progress"
+              }
+              {(() => {
+                if (!activeGame.template) return '';
+                const template = Array.isArray(activeGame.template) ? activeGame.template[0] : activeGame.template;
+                return template?.category ? ` • ${template.category}` : '';
+              })()}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              {participants?.map((p) => (
-                <div key={p.user?.id} className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    {p.user?.username?.[0]?.toUpperCase() || "?"}
-                  </div>
-                  <span className="text-sm">
-                    {p.user?.username || "Unknown"}
-                    {p.user?.id === room.host_id && (
-                      <span className="ml-2 text-xs text-muted-foreground">(Host)</span>
-                    )}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <Button asChild className="w-full">
+              <a href={`/game/${activeGame.id}`}>
+                {activeGame.status === "waiting" ? "Join Game Lobby" : "Continue Playing"}
+              </a>
+            </Button>
           </CardContent>
         </Card>
+      )}
+
+      <div className="grid gap-6 md:grid-cols-2">
+        <RoomCodeCard roomCode={roomCode} />
+
+        <ParticipantsList
+          roomId={room.id}
+          hostId={room.host_id}
+          initialParticipants={participants || []}
+        />
       </div>
 
       {isHost ? (
@@ -131,10 +168,14 @@ export default async function RoomLobbyPage({ params }: RoomLobbyPageProps) {
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Waiting for Host</CardTitle>
-            <CardDescription>
-              The host will start the story when everyone is ready
-            </CardDescription>
+            <CardTitle className="flex items-center gap-1">
+              Waiting for Host
+              <span className="inline-flex">
+                <span className="animate-pulse">.</span>
+                <span className="animate-pulse animation-delay-200">.</span>
+                <span className="animate-pulse animation-delay-400">.</span>
+              </span>
+            </CardTitle>
           </CardHeader>
         </Card>
       )}
