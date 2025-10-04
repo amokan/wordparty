@@ -125,12 +125,30 @@ export function GameWaitingPhase({
           }
         }
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "games",
+          filter: `id=eq.${gameId}`,
+        },
+        () => {
+          console.log("Game was canceled, redirecting to rooms");
+          // Don't redirect the host (they initiated the cancel)
+          if (!isHost) {
+            // Show a brief message and redirect non-host players
+            alert("The host canceled the game.");
+            router.push("/rooms");
+          }
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(gameChannel);
     };
-  }, [gameId, router]);
+  }, [gameId, router, isHost]);
 
   const handleReady = async () => {
     if (isLoading) return;
