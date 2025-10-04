@@ -2,8 +2,10 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { createRoom } from "./create/actions";
+import { joinRoom } from "./join-room-action";
 
 export default async function RoomsPage() {
   const supabase = await createClient();
@@ -84,13 +86,13 @@ export default async function RoomsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form action="/rooms/" method="get" className="flex gap-2">
-              <input
-                type="text"
-                name="code"
+            <form action={joinRoom} className="flex gap-2">
+              <Input
+                name="roomCode"
                 placeholder="Enter room code"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 required
+                maxLength={6}
+                style={{ textTransform: 'uppercase' }}
               />
               <Button type="submit">Join</Button>
             </form>
